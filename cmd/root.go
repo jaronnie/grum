@@ -64,10 +64,20 @@ func run(cmd *cobra.Command, args []string) error {
 		if ep.Protocol == "http" {
 			protocol = "http"
 		}
-		if ep.Port != 0 {
-			cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/"))
-		} else {
-			cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/"))
+
+		switch Type {
+		case "gitlab":
+			if ep.Port != 0 && ep.Port != 22 {
+				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://oauth2:%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/"))
+			} else {
+				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://oauth2:%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/"))
+			}
+		default:
+			if ep.Port != 0 && ep.Port != 22 {
+				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/"))
+			} else {
+				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/"))
+			}
 		}
 	}
 
