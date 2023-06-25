@@ -6,16 +6,20 @@ Copyright © 2023 jaronnie <jaron@jaronnie.com>
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	git "github.com/go-git/go-git/v5"
-	"github.com/jaronnie/grum/internal"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 var cfgFile string
+var Type string
+var Insecure bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -29,28 +33,44 @@ func run(cmd *cobra.Command, args []string) error {
 	pwd, _ := os.Getwd()
 	repo, err := git.PlainOpen(pwd)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	cfg, err := repo.Config()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
-		os.Exit(1)
+		return err
 	}
 
-	// remote origin urls
-	rous := cfg.Remotes["origin"].URLs
-	for i, v := range rous {
-		p := internal.NewParse(v)
-		s, err := p.Replace()
+	for i, v := range cfg.Remotes["origin"].URLs {
+		ep, err := transport.NewEndpoint(v)
 		if err != nil {
 			return err
 		}
-		cfg.Remotes["origin"].URLs[i] = s
+
+		var token string
+		switch Type {
+		case "github":
+			token = os.Getenv("GITHUB_TOKEN")
+		case "gitlab":
+			token = os.Getenv("GITLAB_TOKEN")
+		}
+		if token == "" {
+			return errors.New("empty token")
+		}
+		protocol := "https"
+		if Insecure {
+			protocol = "http"
+		}
+		if ep.Protocol == "http" {
+			protocol = "http"
+		}
+		if ep.Port != 0 {
+			cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/"))
+		} else {
+			cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/"))
+		}
 	}
 
-	// 保存修改后的配置信息
 	err = cfg.Validate()
 	if err != nil {
 		return err
@@ -76,6 +96,9 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grum.yaml)")
 
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
+	rootCmd.Flags().StringVarP(&Type, "type", "", "github", "git remote type")
+	rootCmd.Flags().BoolVarP(&Insecure, "insecure", "", false, "insecure")
 }
 
 // initConfig reads in config file and ENV variables if set.
