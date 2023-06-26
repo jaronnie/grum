@@ -35,3 +35,11 @@ grum
 # grum --type gitlab 使用公司内网的 gitlab
 # grum --type gitlab --insecure # 使用 http
 ```
+
+**Required environment variables, judged according to the type**
+
+| type   | env name                                               |
+| ------ | ------------------------------------------------------ |
+| github | [GITHUB_TOKEN](https://github.com/settings/tokens/new) |
+| gitlab | GITLAB_TOKEN                                           |
+
