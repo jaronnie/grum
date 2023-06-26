@@ -11,7 +11,7 @@ It is no longer necessary to configure cumbersome SSH Key, and the configuration
     url = https://github.com/jaronnie/grum.git
 ```
 
-to 
+to
 
 ```shell
 [remote "origin"]

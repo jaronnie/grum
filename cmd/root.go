@@ -42,42 +42,9 @@ func run(cmd *cobra.Command, args []string) error {
 	}
 
 	for i, v := range cfg.Remotes["origin"].URLs {
-		ep, err := transport.NewEndpoint(v)
+		cfg.Remotes["origin"].URLs[i], err = getNewRemoteUrl(v)
 		if err != nil {
 			return err
-		}
-
-		var token string
-		switch Type {
-		case "github":
-			token = os.Getenv("GITHUB_TOKEN")
-		case "gitlab":
-			token = os.Getenv("GITLAB_TOKEN")
-		}
-		if token == "" {
-			return errors.New("empty token")
-		}
-		protocol := "https"
-		if Insecure {
-			protocol = "http"
-		}
-		if ep.Protocol == "http" {
-			protocol = "http"
-		}
-
-		switch Type {
-		case "gitlab":
-			if ep.Port != 0 && ep.Port != 22 {
-				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://oauth2:%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/"))
-			} else {
-				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://oauth2:%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/"))
-			}
-		default:
-			if ep.Port != 0 && ep.Port != 22 {
-				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/"))
-			} else {
-				cfg.Remotes["origin"].URLs[i] = fmt.Sprintf("%s://%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/"))
-			}
 		}
 	}
 
@@ -90,6 +57,46 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return nil
+}
+
+func getNewRemoteUrl(v string) (string, error) {
+	ep, err := transport.NewEndpoint(v)
+	if err != nil {
+		return "", err
+	}
+
+	var token string
+	switch Type {
+	case "github":
+		token = os.Getenv("GITHUB_TOKEN")
+	case "gitlab":
+		token = os.Getenv("GITLAB_TOKEN")
+	}
+	if token == "" {
+		return "", errors.New("empty token")
+	}
+	protocol := "https"
+	if Insecure {
+		protocol = "http"
+	}
+	if ep.Protocol == "http" {
+		protocol = "http"
+	}
+
+	switch Type {
+	case "gitlab":
+		if ep.Port != 0 && ep.Port != 22 {
+			return fmt.Sprintf("%s://oauth2:%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/")), nil
+		} else {
+			return fmt.Sprintf("%s://oauth2:%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/")), nil
+		}
+	default:
+		if ep.Port != 0 && ep.Port != 22 {
+			return fmt.Sprintf("%s://%s@%s:%d/%s", protocol, token, strings.TrimRight(ep.Host, "/"), ep.Port, strings.TrimLeft(ep.Path, "/")), nil
+		} else {
+			return fmt.Sprintf("%s://%s@%s/%s", protocol, token, strings.TrimRight(ep.Host, "/"), strings.TrimLeft(ep.Path, "/")), nil
+		}
+	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -107,8 +114,8 @@ func init() {
 
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 
-	rootCmd.Flags().StringVarP(&Type, "type", "", "github", "git remote type")
-	rootCmd.Flags().BoolVarP(&Insecure, "insecure", "", false, "insecure")
+	rootCmd.PersistentFlags().StringVarP(&Type, "type", "", "github", "git remote type")
+	rootCmd.PersistentFlags().BoolVarP(&Insecure, "insecure", "", false, "insecure")
 }
 
 // initConfig reads in config file and ENV variables if set.
