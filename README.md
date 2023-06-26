@@ -35,5 +35,3 @@ grum
 # grum --type gitlab 使用公司内网的 gitlab
 # grum --type gitlab --insecure # 使用 http
 ```
-
-
