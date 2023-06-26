@@ -36,6 +36,10 @@ grum
 # grum --type gitlab --insecure # 使用 http
 ```
 
+```shell
+grum clone git@git.hyperchain.cn:niejian/sc.git --type gitlab
+```
+
 **Required environment variables, judged according to the type**
 
 | type   | env name                                               |
