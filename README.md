@@ -24,7 +24,7 @@ support ssh or http/https protocol.
 ## install
 
 ```shell
-go install github.com/jaronnie/grum
+go install github.com/jaronnie/grum@latest
 ```
 
 ## usage
