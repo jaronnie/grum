@@ -10,8 +10,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 )
 
@@ -33,9 +36,32 @@ func clone(cmd *cobra.Command, args []string) error {
 	}
 	command := fmt.Sprintf("git clone %s", s)
 	err = RunCommand(command)
-	if err != nil {
-		return err
+	cobra.CheckErr(err)
+
+	ep, err := Endpoint(url)
+	cobra.CheckErr(err)
+
+	pwd, _ := os.Getwd()
+	repo, err := git.PlainOpen(filepath.Join(pwd, strings.TrimRight(filepath.Base(ep.Path), ".git")))
+	cobra.CheckErr(err)
+
+	cfg, err := repo.Config()
+	cobra.CheckErr(err)
+
+	for i, v := range cfg.Remotes["origin"].URLs {
+		cfg.Remotes["origin"].URLs[i], err = getNewRemoteUrl(v)
+		cobra.CheckErr(err)
+
+		user, err := User(v, Token(Type))
+		cobra.CheckErr(err)
+		cfg.User.Name = user.Username
+		cfg.User.Email = user.Email
 	}
+
+	err = cfg.Validate()
+	cobra.CheckErr(err)
+	err = repo.Storer.SetConfig(cfg)
+	cobra.CheckErr(err)
 	return nil
 }
 

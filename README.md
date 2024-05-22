@@ -1,7 +1,7 @@
 # grum
 
-git reomote url modify, for example:
-It will modify your_repository/.git/config remote.origin url value.
+git remote url modify, for example:
+It will modify your_repository/.git/config remote.origin url value and user.name, user.email.
 
 It is no longer necessary to configure cumbersome SSH Key, and the configuration can be completed with one click through the access token.
 

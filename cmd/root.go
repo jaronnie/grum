@@ -11,70 +11,59 @@ import (
 	"os"
 	"strings"
 
-	git "github.com/go-git/go-git/v5"
+	"github.com/jaronnie/grum/pkg/githosting"
+
+	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-var cfgFile string
-var Type string
-var Insecure bool
+var (
+	Type     string
+	Insecure bool
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "grum",
-	Short: "git reomote url modify",
-	Long:  `git reomote url modify.`,
-	RunE:  run,
+	Short: "git remote url modify",
+	Long:  `git remote url modify.`,
+	Run:   run,
 }
 
-func run(cmd *cobra.Command, args []string) error {
+func run(cmd *cobra.Command, args []string) {
 	pwd, _ := os.Getwd()
 	repo, err := git.PlainOpen(pwd)
-	if err != nil {
-		return err
-	}
+	cobra.CheckErr(err)
 
 	cfg, err := repo.Config()
-	if err != nil {
-		return err
-	}
+	cobra.CheckErr(err)
 
 	for i, v := range cfg.Remotes["origin"].URLs {
 		cfg.Remotes["origin"].URLs[i], err = getNewRemoteUrl(v)
-		if err != nil {
-			return err
-		}
+		cobra.CheckErr(err)
+
+		user, err := User(v, Token(Type))
+		cobra.CheckErr(err)
+		cfg.User.Name = user.Username
+		cfg.User.Email = user.Email
 	}
 
 	err = cfg.Validate()
-	if err != nil {
-		return err
-	}
+	cobra.CheckErr(err)
 	err = repo.Storer.SetConfig(cfg)
-	if err != nil {
-		return err
-	}
-	return nil
+	cobra.CheckErr(err)
 }
 
 func getNewRemoteUrl(v string) (string, error) {
-	ep, err := transport.NewEndpoint(v)
-	if err != nil {
-		return "", err
-	}
-
-	var token string
-	switch Type {
-	case "github":
-		token = os.Getenv("GITHUB_TOKEN")
-	case "gitlab":
-		token = os.Getenv("GITLAB_TOKEN")
-	}
+	token := Token(Type)
 	if token == "" {
 		return "", errors.New("empty token")
 	}
+
+	ep, err := Endpoint(v)
+	cobra.CheckErr(err)
+
 	protocol := "https"
 	if Insecure {
 		protocol = "http"
@@ -99,6 +88,44 @@ func getNewRemoteUrl(v string) (string, error) {
 	}
 }
 
+func Endpoint(url string) (*transport.Endpoint, error) {
+	return transport.NewEndpoint(url)
+}
+
+func Token(t string) string {
+	var token string
+	switch t {
+	case "github":
+		token = os.Getenv("GITHUB_TOKEN")
+	case "gitlab":
+		token = os.Getenv("GITLAB_TOKEN")
+	case "gitea":
+		token = os.Getenv("GITEA_TOKEN")
+	}
+	return token
+}
+
+func User(url string, token string) (*githosting.UserInfo, error) {
+	var apiUrl string
+	ep, err := transport.NewEndpoint(url)
+	cobra.CheckErr(err)
+
+	if Type == githosting.GITHUB {
+		apiUrl = "https://api.github.com"
+	} else {
+		apiUrl = fmt.Sprintf("%s://%s", ep.Protocol, ep.Host)
+	}
+
+	gh, err := githosting.New(githosting.Config{
+		Type:  Type,
+		Url:   apiUrl,
+		Token: token,
+	})
+	cobra.CheckErr(err)
+
+	return gh.GetUserInfo()
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -109,35 +136,6 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.grum.yaml)")
-
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-
 	rootCmd.PersistentFlags().StringVarP(&Type, "type", "", "github", "git remote type")
 	rootCmd.PersistentFlags().BoolVarP(&Insecure, "insecure", "", false, "insecure")
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := os.UserHomeDir()
-		cobra.CheckErr(err)
-
-		// Search config in home directory with name ".grum" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".grum")
-	}
-
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
-	}
 }
