@@ -2,10 +2,10 @@ package githosting
 
 import (
 	"context"
-	"github.com/jaronnie/genius"
-	"github.com/spf13/cast"
 
+	"github.com/jaronnie/genius"
 	"github.com/jaronnie/restc"
+	"github.com/spf13/cast"
 )
 
 type Gitea struct {
