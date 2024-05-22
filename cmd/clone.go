@@ -7,12 +7,11 @@ package cmd
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
+
+	"github.com/jaronnie/grum/pkg/execx"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
@@ -27,7 +26,7 @@ var cloneCmd = &cobra.Command{
 	RunE:  clone,
 }
 
-func clone(cmd *cobra.Command, args []string) error {
+func clone(_ *cobra.Command, args []string) error {
 	url := args[0]
 
 	s, err := getNewRemoteUrl(url)
@@ -35,7 +34,7 @@ func clone(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	command := fmt.Sprintf("git clone %s", s)
-	err = RunCommand(command)
+	err = execx.Run(command)
 	cobra.CheckErr(err)
 
 	ep, err := Endpoint(url)
@@ -67,51 +66,4 @@ func clone(cmd *cobra.Command, args []string) error {
 
 func init() {
 	rootCmd.AddCommand(cloneCmd)
-}
-
-func RunCommand(arg string) error {
-	goos := runtime.GOOS
-	var cmd *exec.Cmd
-	switch goos {
-	case "darwin", "linux":
-		cmd = exec.Command("sh", "-c", arg)
-	case "windows":
-		cmd = exec.Command("cmd.exe", "/c", arg)
-	default:
-		return fmt.Errorf("unexpected os: %v", goos)
-	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	cmd.Dir = pwd
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	go func() {
-		_, _ = io.Copy(os.Stdout, stdout)
-	}()
-
-	go func() {
-		_, _ = io.Copy(os.Stderr, stderr)
-	}()
-
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
 }

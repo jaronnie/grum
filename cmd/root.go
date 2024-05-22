@@ -31,7 +31,7 @@ var rootCmd = &cobra.Command{
 	Run:   run,
 }
 
-func run(cmd *cobra.Command, args []string) {
+func run(*cobra.Command, []string) {
 	pwd, _ := os.Getwd()
 	repo, err := git.PlainOpen(pwd)
 	cobra.CheckErr(err)
