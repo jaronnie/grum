@@ -37,7 +37,10 @@ grum
 ```
 
 ```shell
+# default github
 grum clone git@git.hyperchain.cn:niejian/sc.git --type gitlab
+# http insecure
+grum clone http://git.hyperchain.cn/niejian/sc.git --type gitlab --insecure
 ```
 
 **Required environment variables, judged according to the type**
