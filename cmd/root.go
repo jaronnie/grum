@@ -39,6 +39,10 @@ func run(*cobra.Command, []string) {
 	cfg, err := repo.Config()
 	cobra.CheckErr(err)
 
+	if cfg.Remotes == nil || cfg.Remotes["origin"] == nil {
+		cobra.CheckErr(errors.New("请设置远程仓库"))
+	}
+
 	for i, v := range cfg.Remotes["origin"].URLs {
 		cfg.Remotes["origin"].URLs[i], err = getNewRemoteUrl(v)
 		cobra.CheckErr(err)
